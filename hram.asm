@@ -23,8 +23,7 @@ hSeconds:: db
 	ds 1
 
 hVBlankCounter:: db
-
-	ds 1
+hBlackOutBGMapThird:: db
 
 hROMBank:: db
 hVBlank:: db

@@ -65,7 +65,7 @@ _OpenAndCloseMenu_HDMATransferTilemapAndAttrmap::
 	ld a, $1
 	ldh [hOAMUpdate], a
 
-	farcall OpenAndCloseMenu_HDMATransferTilemapAndAttrmap
+	farcall CGBOnly_CopyTilemapAtOnce
 
 	pop af
 	ldh [hOAMUpdate], a

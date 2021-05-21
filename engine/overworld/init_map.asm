@@ -38,7 +38,7 @@ ReanchorBGMap_NoOAMUpdate::
 	xor a
 	ldh [hBGMapMode], a
 	ldh [hWY], a
-	farcall HDMATransfer_FillBGMap0WithBlack ; no need to farcall
+	farcall FillBGMap0WithBlack ; no need to farcall
 	ld a, HIGH(vBGMap0)
 	call .LoadBGMapAddrIntoHRAM
 	xor a ; LOW(vBGMap0)
@@ -77,28 +77,64 @@ LoadFonts_NoOAMUpdate::
 	call LoadStandardFont
 	ret
 
-HDMATransfer_FillBGMap0WithBlack:
-	ldh a, [rSVBK]
-	push af
-	ld a, BANK(wDecompressScratch)
-	ldh [rSVBK], a
+FillBGMap0WithBlack::
+        nop
+        ldh a, [hBlackOutBGMapThird]
+        and a ; 0
+        ret z
 
-	ld a, "■"
-	ld hl, wDecompressScratch
-	ld bc, wScratchAttrmap - wDecompressScratch
-	call ByteFill
-	ld a, HIGH(wDecompressScratch)
-	ldh [rHDMA1], a
-	ld a, LOW(wDecompressScratch)
-	ldh [rHDMA2], a
-	ld a, HIGH(vBGMap0 - VRAM_Begin)
-	ldh [rHDMA3], a
-	ld a, LOW(vBGMap0 - VRAM_Begin)
-	ldh [rHDMA4], a
-	ld a, $3f
-	ldh [hDMATransfer], a
-	call DelayFrame
+        dec a ; 1
+        jr z, .one
+        dec a ; 2
+        jr z, .two
+        ; 3
 
-	pop af
-	ldh [rSVBK], a
-	ret
+BG_THIRD_HEIGHT EQU (BG_MAP_HEIGHT - SCREEN_HEIGHT) / 2
+
+; Black out the 18 BG Map rows right of the screen area
+        ld a, 2
+        ldh [hBlackOutBGMapThird], a
+        ld hl, hBGMapAddress
+        ld a, [hli]
+        ld h, [hl]
+        ld l, a
+        ld de, SCREEN_WIDTH
+        add hl, de
+        ld b, SCREEN_HEIGHT
+        ld a, "■"
+.loop1
+rept BG_MAP_WIDTH - SCREEN_WIDTH
+        ld [hli], a
+endr
+        add hl, de
+        dec b
+        jr nz, .loop1
+        ret
+
+.two
+; Black out the top 7 BG Map rows below the screen area
+        ld a, 1
+        ld de, BG_MAP_WIDTH * SCREEN_HEIGHT
+        jr .go
+
+.one
+; Black out the bottom 7 BG Map rows below the screen area
+        xor a
+        ld de, BG_MAP_WIDTH * (SCREEN_HEIGHT + BG_THIRD_HEIGHT)
+
+.go
+        ldh [hBlackOutBGMapThird], a
+        ld hl, hBGMapAddress
+        ld a, [hli]
+        ld h, [hl]
+        ld l, a
+        add hl, de
+        ld b, BG_THIRD_HEIGHT * 2
+        ld a, "■"
+.loop2
+rept BG_MAP_WIDTH / 2
+        ld [hli], a
+endr
+        dec b
+        jr nz, .loop2
+        ret

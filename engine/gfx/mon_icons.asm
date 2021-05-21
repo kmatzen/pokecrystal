@@ -347,7 +347,7 @@ GetGFXUnlessMobile:
 	ld a, [wLinkMode]
 	cp LINK_MOBILE
 	jp nz, Request2bpp
-	jp Get2bppViaHDMA
+	jp Get2bpp
 
 FreezeMonIcons:
 	ld hl, wSpriteAnimationStructs
