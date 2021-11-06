@@ -394,6 +394,45 @@ _continue_HDMATransfer:
 
 	ret
 
+DoHBlankHDMATransfer:
+; LY magic
+	ld b, $7f
+	ld a, h
+	ldh [rHDMA1], a
+	ld a, l
+	and $f0 ; high nybble
+	ldh [rHDMA2], a
+	ld a, d
+	and $1f ; lower 5 bits
+	ldh [rHDMA3], a
+	ld a, e
+	and $f0 ; high nybble
+	ldh [rHDMA4], a
+	dec c ; c = number of LYs needed
+	ld e, c
+	set 7, e ; hblank dma transfers
+	ldh a, [rLY]
+	add c ; calculate end LY
+	cp b ; is the end LY greater than the max LY
+	call nc, DI_DelayFrame ; if so, delay a frame to reset the LY
+
+	lb bc, %11, LOW(rSTAT)
+.noHBlankWait
+	ldh a, [c]
+	and b
+	jr z, .noHBlankWait
+.hBlankWaitLoop
+	ldh a, [c]
+	and b
+	jr nz, .hBlankWaitLoop
+	ld hl, rHDMA5
+	ld [hl], e
+	ld a, $ff
+.waitForHDMA
+	cp [hl]
+	jr nz, .waitForHDMA
+	ret
+
 _LoadHDMAParameters:
 	ld a, h
 	ldh [rHDMA1], a
@@ -574,13 +613,13 @@ HDMATransfer_OnlyTopFourRows:
 	ld c, $8
 	ld hl, wScratchTilemap + $80
 	debgcoord 0, 0, vBGMap1
-	call HDMATransfer_Wait127Scanlines
+	call DoHBlankHDMATransfer
 	ld a, $0
 	ldh [rVBK], a
 	ld c, $8
 	ld hl, wScratchTilemap
 	debgcoord 0, 0, vBGMap1
-	call HDMATransfer_Wait127Scanlines
+	call DoHBlankHDMATransfer
 	ret
 
 .Copy:
@@ -602,3 +641,20 @@ HDMATransfer_OnlyTopFourRows:
 	dec b
 	jr nz, .outer_loop
 	ret
+
+DI_DelayFrame:
+	; I have no idea of what's going on here, but this function is being called while not in di mode
+	; this is a duct-tape fix and should probably be replaced eventually
+	ldh a, [rLY]
+	push bc
+	ld b, a
+.loop
+	ldh a, [rLY]
+	and a
+	jr z, .done
+	cp b
+	jr nc, .loop
+.done
+	pop bc
+	ret
+
